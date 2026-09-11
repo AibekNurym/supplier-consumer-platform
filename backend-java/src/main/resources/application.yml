@@ -1,0 +1,120 @@
+server:
+  # The Node server listened on 3000 and frontend/vite.config.js proxies /api and /uploads
+  # there. Keeping the port means the frontend needs no change at all.
+  port: ${PORT:3000}
+  shutdown: graceful
+
+spring:
+  application:
+    name: supplier-consumer-platform
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/scp}
+    username: ${PGUSER:scp}
+    password: ${PGPASSWORD:scp}
+    hikari:
+      # Kept small on purpose: the deployed database is a Neon pooler endpoint with a
+      # modest connection ceiling.
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      pool-name: scp-pool
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # For a database that already has the Node-built schema, start the app once with
+    # FLYWAY_BASELINE=true so V1 is recorded as already applied and only V2/V3 run.
+    baseline-on-migrate: ${FLYWAY_BASELINE:false}
+    baseline-version: 1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      timeout: 2s
+      # Redis holds only chat unread counters and the app degrades to an in-process store
+      # when it is unreachable, so a failure here must never stop startup.
+      connect-timeout: 2s
+
+  jackson:
+    # JS JSON.stringify drops undefined, not null, and this API emits plenty of real nulls
+    # (phone, company_id, lastLogin, readAt) that clients test for. Key omission is handled
+    # explicitly in ApiResponse, never by an inclusion rule.
+    default-property-inclusion: always
+    # Deliberately absent: property-naming-strategy. Casing here is per-endpoint, not global.
+
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:100MB}
+      max-request-size: ${MAX_REQUEST_SIZE:100MB}
+
+  mvc:
+    # Required so unknown routes reach the exception handler and can be answered with the
+    # same HTML that Express's finalhandler produced, instead of Spring's /error JSON.
+    throw-exception-if-no-handler-found: true
+
+  web:
+    resources:
+      add-mappings: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    redis:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  wire:
+    # Every timestamp column is `timestamp without time zone`. The Node driver rendered
+    # those by reading the wall-clock value in the server process's local zone and emitting
+    # the corresponding UTC instant, so this value is part of the wire contract. Inheriting
+    # the host default instead of pinning it shifts every timestamp in the API.
+    timezone: ${WIRE_TIMEZONE:Asia/Almaty}
+
+  jwt:
+    # No defaults on purpose. The Node code falls back to a hardcoded literal in four files,
+    # and that literal is public in the repository, so every token it signs is forgeable.
+    secret: ${JWT_SECRET}
+    refresh-secret: ${JWT_REFRESH_SECRET}
+    issuer: pern-stack-app
+    audience: pern-stack-users
+    access-ttl: ${JWT_EXPIRES_IN:15m}
+    refresh-ttl: ${JWT_REFRESH_EXPIRES_IN:7d}
+
+  bootstrap:
+    admin:
+      # A fresh database needs a platform administrator or no company can ever be approved.
+      # Leave the password unset and one is generated and logged once at startup, rather than
+      # every deployment sharing a password that is written into the source.
+      email: ${ADMIN_EMAIL:admin@platform.com}
+      password: ${ADMIN_PASSWORD:}
+
+  uploads:
+    dir: ${UPLOADS_DIR:./uploads}
+
+  socketio:
+    enabled: ${SOCKETIO_ENABLED:true}
+    host: 0.0.0.0
+    port: ${SOCKETIO_PORT:3001}
+
+  rate-limit:
+    # The Node app declares two express-rate-limit limiters and then never attaches them,
+    # so nothing is rate limited today. Defaulting to off keeps that behaviour; turn it on
+    # to get the limits the source clearly intended.
+    enabled: ${RATE_LIMIT_ENABLED:false}
+    auth-per-window: 5
+    strict-per-window: 3
+    window: 15m
+
+logging:
+  level:
+    com.supplierconsumer: INFO
