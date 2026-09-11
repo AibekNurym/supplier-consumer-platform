@@ -90,6 +90,14 @@ app:
     access-ttl: ${JWT_EXPIRES_IN:15m}
     refresh-ttl: ${JWT_REFRESH_EXPIRES_IN:7d}
 
+  bootstrap:
+    admin:
+      # A fresh database needs a platform administrator or no company can ever be approved.
+      # Leave the password unset and one is generated and logged once at startup, rather than
+      # every deployment sharing a password that is written into the source.
+      email: ${ADMIN_EMAIL:admin@platform.com}
+      password: ${ADMIN_PASSWORD:}
+
   uploads:
     dir: ${UPLOADS_DIR:./uploads}
 

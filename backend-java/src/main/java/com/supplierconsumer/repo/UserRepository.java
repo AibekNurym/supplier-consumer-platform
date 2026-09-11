@@ -175,6 +175,25 @@ public class UserRepository {
                 .single();
     }
 
+    /** The admin profile update, which may also change the email address. */
+    public Map<String, Object> updateAdminProfile(long userId, String email, String firstName,
+                                                  String lastName, String phone) {
+        return db.sql("""
+                        UPDATE users
+                        SET email = :email, first_name = :firstName, last_name = :lastName,
+                            phone = :phone, updated_at = NOW()
+                        WHERE id = :id
+                        RETURNING id, email, first_name, last_name, phone, updated_at
+                        """)
+                .param("email", email)
+                .param("firstName", firstName)
+                .param("lastName", lastName)
+                .param("phone", phone)
+                .param("id", userId)
+                .query(pgJson.rowMapper())
+                .single();
+    }
+
     public Optional<String> findPasswordHash(long userId) {
         return db.sql("SELECT password_hash FROM users WHERE id = :id")
                 .param("id", userId)

@@ -69,10 +69,15 @@ public class CompanyRepository {
                 .optional();
     }
 
+    /**
+     * Approving leaves any previous rejection_message in place -- the original only touches the
+     * status. A company that was rejected and later approved therefore still carries the old
+     * reason, which is invisible because the login gate only reads it in the rejected branch.
+     */
     public Map<String, Object> approve(long companyId) {
         return db.sql("""
                         UPDATE companies
-                        SET status = 'approved', rejection_message = NULL, updated_at = NOW()
+                        SET status = 'approved', updated_at = CURRENT_TIMESTAMP
                         WHERE id = :id
                         RETURNING id, name, status
                         """)
@@ -84,7 +89,8 @@ public class CompanyRepository {
     public Map<String, Object> reject(long companyId, String rejectionMessage) {
         return db.sql("""
                         UPDATE companies
-                        SET status = 'rejected', rejection_message = :message, updated_at = NOW()
+                        SET status = 'rejected', rejection_message = :message,
+                            updated_at = CURRENT_TIMESTAMP
                         WHERE id = :id
                         RETURNING id, name, status, rejection_message
                         """)
@@ -98,6 +104,13 @@ public class CompanyRepository {
      * A hard delete, relied upon to cascade from companies through to the owner and everything
      * downstream. Only reachable for a rejected company.
      */
+    public Optional<String> findStatus(long companyId) {
+        return db.sql("SELECT status FROM companies WHERE id = :id")
+                .param("id", companyId)
+                .query(String.class)
+                .optional();
+    }
+
     public void delete(long companyId) {
         db.sql("DELETE FROM companies WHERE id = :id").param("id", companyId).update();
     }
