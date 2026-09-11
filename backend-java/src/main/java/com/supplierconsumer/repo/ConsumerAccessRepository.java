@@ -141,6 +141,22 @@ public class ConsumerAccessRepository {
                 .update();
     }
 
+    /**
+     * Grants access only if nothing is recorded yet, leaving an existing row -- including a revoked
+     * one -- untouched. Used when placing an order, which should enable conversation without
+     * quietly reinstating access a supplier deliberately withdrew.
+     */
+    public void grantAccessIfAbsent(long consumerId, long companyId) {
+        db.sql("""
+                        INSERT INTO consumer_company_access (consumer_id, company_id, granted_by, granted_at)
+                        VALUES (:consumerId, :companyId, NULL, NOW())
+                        ON CONFLICT (consumer_id, company_id) DO NOTHING
+                        """)
+                .param("consumerId", consumerId)
+                .param("companyId", companyId)
+                .update();
+    }
+
     public void revokeAccessById(long accessId) {
         db.sql("""
                         UPDATE consumer_company_access
