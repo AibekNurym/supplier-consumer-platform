@@ -11,6 +11,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import com.supplierconsumer.security.PrincipalArgumentResolver;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -25,9 +27,20 @@ public class WebConfig implements WebMvcConfigurer {
     private static final Logger log = LoggerFactory.getLogger(WebConfig.class);
 
     private final AppProperties props;
+    private final PrincipalArgumentResolver principalResolver;
 
-    public WebConfig(AppProperties props) {
+    public WebConfig(AppProperties props, PrincipalArgumentResolver principalResolver) {
         this.props = props;
+        this.principalResolver = principalResolver;
+    }
+
+    /**
+     * Registers the resolver that authenticates a request based on which principal type the
+     * handler declares. This is the counterpart of attaching a middleware to a route in Express.
+     */
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(principalResolver);
     }
 
     @Bean
