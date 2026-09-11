@@ -1,0 +1,7 @@
+target/
+*.class
+.mvn/
+mvnw
+mvnw.cmd
+uploads/
+.env

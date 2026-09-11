@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: scp-postgres
+    environment:
+      POSTGRES_USER: scp
+      POSTGRES_PASSWORD: scp
+      POSTGRES_DB: scp
+      # The wire format of every timestamp depends on this matching the app's zone.
+      TZ: Asia/Almaty
+    ports:
+      - "5433:5432"
+    volumes:
+      - scp-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scp -d scp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: scp-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  scp-pgdata:

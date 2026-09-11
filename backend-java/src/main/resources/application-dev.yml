@@ -1,0 +1,7 @@
+# Activated with SPRING_PROFILES_ACTIVE=dev. The only behavioural difference that reaches
+# the wire is the `error` key on product and order 500s, which the Node code gated on
+# NODE_ENV === 'development'.
+logging:
+  level:
+    com.supplierconsumer: DEBUG
+    org.springframework.jdbc.core.JdbcTemplate: DEBUG
