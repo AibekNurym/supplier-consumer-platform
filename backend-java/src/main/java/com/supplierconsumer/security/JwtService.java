@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Mints and validates both families of token.
@@ -87,6 +88,7 @@ public class JwtService {
     public String signCompanyRefresh(long userId, String email, int roleId, String roleName) {
         return Jwts.builder()
                 .claims(companyClaims(userId, email, roleId, roleName))
+                .id(newTokenId())
                 .issuer(issuer)
                 .audience().add(audience).and()
                 .issuedAt(Date.from(Instant.now()))
@@ -129,6 +131,7 @@ public class JwtService {
     public String signConsumerRefresh(long consumerId, String email) {
         return Jwts.builder()
                 .claims(consumerClaims(consumerId, email))
+                .id(newTokenId())
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(refreshTtl)))
                 .signWith(refreshKey)
@@ -174,6 +177,20 @@ public class JwtService {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    /**
+     * Gives each refresh token a unique {@code jti}.
+     *
+     * <p>Without it, two sign-ins for the same account within the same second produce byte-identical
+     * tokens, because every claim including {@code iat} matches. In the original that means the two
+     * sessions literally share a refresh token, so revoking either kills both. A random id makes
+     * each session's token distinct, which is also what lets the digest column carry a unique index.
+     *
+     * <p>Access tokens are left alone: they are never stored, and clients treat them as opaque.
+     */
+    private String newTokenId() {
+        return UUID.randomUUID().toString();
     }
 
     /**
